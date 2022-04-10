@@ -22,5 +22,6 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
     println!("cargo:rustc-link-lib=static=randomx");
+    println!("cargo:rustc-link-lib=dylib=stdc++");
     println!("cargo:rerun-if-changed=wrapper.h");
 }

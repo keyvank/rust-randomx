@@ -1,5 +1,8 @@
-use rust_randomx;
+use rust_randomx::SlowHasher;
 
 fn main() {
-    rust_randomx::hello_world();
+    let key = b"RandomX example key\x00";
+    let input = b"RandomX example input\x00";
+    let hasher = SlowHasher::new(key);
+    println!("{:?}", hasher.hash(input));
 }
