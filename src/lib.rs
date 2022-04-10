@@ -2,7 +2,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
+use num_cpus;
 use std::os::raw::c_void;
+use std::thread;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -10,21 +12,32 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 mod tests {
     use super::*;
 
+    const KEY: &[u8] = b"RandomX example key\x00";
+    const INPUT: &[u8] = b"RandomX example input\x00";
+    const EXPECTED: Output = Output([
+        138, 72, 229, 249, 219, 69, 171, 121, 217, 8, 5, 116, 196, 216, 25, 84, 254, 106, 198, 56,
+        66, 33, 74, 255, 115, 194, 68, 178, 99, 48, 183, 201,
+    ]);
+
     #[test]
-    fn test_correctness() {
-        let key = b"RandomX example key\x00";
-        let input = b"RandomX example input\x00";
-        let expected = Output([
-            138, 72, 229, 249, 219, 69, 171, 121, 217, 8, 5, 116, 196, 216, 25, 84, 254, 106, 198,
-            56, 66, 33, 74, 255, 115, 194, 68, 178, 99, 48, 183, 201,
-        ]);
-        let hasher = Hasher::new(key, false);
-        assert_eq!(hasher.hash(input), expected);
+    fn test_slow_hasher() {
+        let slow = Hasher::new(KEY, false);
+        assert_eq!(slow.hash(INPUT), EXPECTED);
+    }
+
+    #[test]
+    fn test_fast_hasher() {
+        let fast = Hasher::new(KEY, true);
+        assert_eq!(fast.hash(INPUT), EXPECTED);
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Output([u8; RANDOMX_HASH_SIZE as usize]);
+
+#[derive(Clone)]
+struct Sendable<T>(*mut T);
+unsafe impl<T> Send for Sendable<T> {}
 
 pub struct Hasher {
     fast: bool,
@@ -42,7 +55,28 @@ impl Hasher {
             let vm = if fast {
                 flags = flags | randomx_flags_RANDOMX_FLAG_FULL_MEM;
                 dataset = randomx_alloc_dataset(flags);
-                randomx_init_dataset(dataset, cache, 0, randomx_dataset_item_count());
+                let num_threads = num_cpus::get();
+                let length = randomx_dataset_item_count() as usize / num_threads;
+                let mut threads = Vec::new();
+                for i in 0..num_threads {
+                    let sendable_cache = Sendable(cache);
+                    let sendable_dataset = Sendable(dataset);
+                    threads.push(thread::spawn(move || {
+                        let cache = sendable_cache.clone();
+                        let dataset = sendable_dataset.clone();
+                        randomx_init_dataset(
+                            dataset.0,
+                            cache.0,
+                            (i * length) as u64,
+                            length as u64,
+                        );
+                    }));
+                }
+                for t in threads {
+                    t.join()
+                        .expect("Error while initializing the RandomX dataset!");
+                }
+
                 randomx_release_cache(cache);
                 cache = std::ptr::null_mut();
                 randomx_create_vm(flags, std::ptr::null_mut(), dataset)

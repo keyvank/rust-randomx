@@ -8,3 +8,4 @@ cmake = "0.1"
 bindgen = "0.53.1"
 
 [dependencies]
+num_cpus = "1.0"
