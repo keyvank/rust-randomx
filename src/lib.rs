@@ -12,24 +12,45 @@ use bindings::*;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Output([u8; RANDOMX_HASH_SIZE as usize]);
 
+impl AsRef<[u8]> for Output {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl Output {
+    pub fn leading_zeros(&self) -> u32 {
+        let mut zeros = 0;
+        for limb in self.0.iter().rev() {
+            let limb_zeros = limb.leading_zeros();
+            zeros += limb_zeros;
+            if limb_zeros != 8 {
+                break;
+            }
+        }
+        zeros
+    }
+}
+
 #[derive(Clone)]
 struct Sendable<T>(*mut T);
 unsafe impl<T> Send for Sendable<T> {}
 
-pub struct Hasher {
+pub struct Context {
+    flags: randomx_flags,
     fast: bool,
     cache: *mut randomx_cache,
-    vm: *mut randomx_vm,
     dataset: *mut randomx_dataset,
 }
-impl Hasher {
+
+impl Context {
     pub fn new(key: &[u8], fast: bool) -> Self {
         unsafe {
             let mut flags = randomx_get_flags();
             let mut cache = randomx_alloc_cache(flags);
             randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as u64);
             let mut dataset = std::ptr::null_mut();
-            let vm = if fast {
+            if fast {
                 flags = flags | randomx_flags_RANDOMX_FLAG_FULL_MEM;
                 dataset = randomx_alloc_dataset(flags);
                 let num_threads = num_cpus::get();
@@ -56,16 +77,41 @@ impl Hasher {
 
                 randomx_release_cache(cache);
                 cache = std::ptr::null_mut();
-                randomx_create_vm(flags, std::ptr::null_mut(), dataset)
-            } else {
-                randomx_create_vm(flags, cache, std::ptr::null_mut())
-            };
+            }
 
-            Hasher {
+            Self {
+                flags,
                 fast,
                 cache,
-                vm,
                 dataset,
+            }
+        }
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        unsafe {
+            if self.fast {
+                randomx_release_dataset(self.dataset);
+            } else {
+                randomx_release_cache(self.cache);
+            }
+        }
+    }
+}
+
+pub struct Hasher {
+    vm: *mut randomx_vm,
+}
+
+unsafe impl Send for Hasher {}
+
+impl Hasher {
+    pub fn new(context: &Context) -> Self {
+        unsafe {
+            Hasher {
+                vm: randomx_create_vm(context.flags, context.cache, context.dataset),
             }
         }
     }
@@ -88,11 +134,6 @@ impl Drop for Hasher {
     fn drop(&mut self) {
         unsafe {
             randomx_destroy_vm(self.vm);
-            if self.fast {
-                randomx_release_dataset(self.dataset);
-            } else {
-                randomx_release_cache(self.cache);
-            }
         }
     }
 }
@@ -110,13 +151,15 @@ mod tests {
 
     #[test]
     fn test_slow_hasher() {
-        let slow = Hasher::new(KEY, false);
+        let ctx = Context::new(KEY, false);
+        let slow = Hasher::new(&ctx);
         assert_eq!(slow.hash(INPUT), EXPECTED);
     }
 
     #[test]
     fn test_fast_hasher() {
-        let fast = Hasher::new(KEY, true);
+        let ctx = Context::new(KEY, true);
+        let fast = Hasher::new(&ctx);
         assert_eq!(fast.hash(INPUT), EXPECTED);
     }
 }
