@@ -4,6 +4,7 @@
 
 use num_cpus;
 use std::os::raw::c_void;
+use std::sync::Arc;
 use std::thread;
 
 mod bindings;
@@ -102,15 +103,17 @@ impl Drop for Context {
 }
 
 pub struct Hasher {
+    _context: Arc<Context>,
     vm: *mut randomx_vm,
 }
 
 unsafe impl Send for Hasher {}
 
 impl Hasher {
-    pub fn new(context: &Context) -> Self {
+    pub fn new(context: Arc<Context>) -> Self {
         unsafe {
             Hasher {
+                _context: Arc::clone(&context),
                 vm: randomx_create_vm(context.flags, context.cache, context.dataset),
             }
         }
@@ -151,15 +154,13 @@ mod tests {
 
     #[test]
     fn test_slow_hasher() {
-        let ctx = Context::new(KEY, false);
-        let slow = Hasher::new(&ctx);
+        let slow = Hasher::new(Arc::new(Context::new(KEY, false)));
         assert_eq!(slow.hash(INPUT), EXPECTED);
     }
 
     #[test]
     fn test_fast_hasher() {
-        let ctx = Context::new(KEY, true);
-        let fast = Hasher::new(&ctx);
+        let fast = Hasher::new(Arc::new(Context::new(KEY, true)));
         assert_eq!(fast.hash(INPUT), EXPECTED);
     }
 }
