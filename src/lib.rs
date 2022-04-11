@@ -6,31 +6,8 @@ use num_cpus;
 use std::os::raw::c_void;
 use std::thread;
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const KEY: &[u8] = b"RandomX example key\x00";
-    const INPUT: &[u8] = b"RandomX example input\x00";
-    const EXPECTED: Output = Output([
-        138, 72, 229, 249, 219, 69, 171, 121, 217, 8, 5, 116, 196, 216, 25, 84, 254, 106, 198, 56,
-        66, 33, 74, 255, 115, 194, 68, 178, 99, 48, 183, 201,
-    ]);
-
-    #[test]
-    fn test_slow_hasher() {
-        let slow = Hasher::new(KEY, false);
-        assert_eq!(slow.hash(INPUT), EXPECTED);
-    }
-
-    #[test]
-    fn test_fast_hasher() {
-        let fast = Hasher::new(KEY, true);
-        assert_eq!(fast.hash(INPUT), EXPECTED);
-    }
-}
+mod bindings;
+use bindings::*;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Output([u8; RANDOMX_HASH_SIZE as usize]);
@@ -117,5 +94,29 @@ impl Drop for Hasher {
                 randomx_release_cache(self.cache);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const KEY: &[u8] = b"RandomX example key\x00";
+    const INPUT: &[u8] = b"RandomX example input\x00";
+    const EXPECTED: Output = Output([
+        138, 72, 229, 249, 219, 69, 171, 121, 217, 8, 5, 116, 196, 216, 25, 84, 254, 106, 198, 56,
+        66, 33, 74, 255, 115, 194, 68, 178, 99, 48, 183, 201,
+    ]);
+
+    #[test]
+    fn test_slow_hasher() {
+        let slow = Hasher::new(KEY, false);
+        assert_eq!(slow.hash(INPUT), EXPECTED);
+    }
+
+    #[test]
+    fn test_fast_hasher() {
+        let fast = Hasher::new(KEY, true);
+        assert_eq!(fast.hash(INPUT), EXPECTED);
     }
 }
