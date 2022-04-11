@@ -108,6 +108,7 @@ pub struct Hasher {
 }
 
 unsafe impl Send for Hasher {}
+unsafe impl Sync for Hasher {}
 
 impl Hasher {
     pub fn new(context: Arc<Context>) -> Self {
