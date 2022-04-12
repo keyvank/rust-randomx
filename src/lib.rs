@@ -10,8 +10,44 @@ use std::thread;
 mod bindings;
 use bindings::*;
 
+#[derive(Debug, Clone, Copy)]
+pub struct Difficulty(u32);
+
+impl Difficulty {
+    pub fn new(d: u32) -> Self {
+        Difficulty(d)
+    }
+    pub fn zeros(&self) -> usize {
+        (self.0 >> 24) as usize
+    }
+    pub fn postfix(&self) -> u32 {
+        self.0 & 0x00ffffff
+    }
+    pub fn scale(&self, f: f32) -> Self {
+        let mply = (((self.postfix() as u64) << 16) as f32 / f) as u64;
+        let offset = (mply.leading_zeros() as usize) / 8;
+        let new_postfix = &mply.to_be_bytes()[offset..offset + 3];
+        Difficulty(u32::from_le_bytes([
+            new_postfix[2],
+            new_postfix[1],
+            new_postfix[0],
+            (self.zeros() + offset - 3) as u8,
+        ]))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Output([u8; RANDOMX_HASH_SIZE as usize]);
+
+impl From<Difficulty> for Output {
+    fn from(d: Difficulty) -> Self {
+        let mut output = [0u8; 32];
+        let zeros = d.zeros();
+        let postfix = d.postfix();
+        output[zeros..zeros + 3].copy_from_slice(&postfix.to_be_bytes()[1..4]);
+        Self(output)
+    }
+}
 
 impl AsRef<[u8]> for Output {
     fn as_ref(&self) -> &[u8] {
@@ -20,9 +56,21 @@ impl AsRef<[u8]> for Output {
 }
 
 impl Output {
+    pub fn meets_difficulty(&self, d: Difficulty) -> bool {
+        for (a, b) in self.0.iter().zip(Output::from(d).0.iter()) {
+            if a > b {
+                return false;
+            }
+            if a < b {
+                return true;
+            }
+        }
+        true
+    }
+
     pub fn leading_zeros(&self) -> u32 {
         let mut zeros = 0;
-        for limb in self.0.iter().rev() {
+        for limb in self.0.iter() {
             let limb_zeros = limb.leading_zeros();
             zeros += limb_zeros;
             if limb_zeros != 8 {
@@ -43,6 +91,9 @@ pub struct Context {
     cache: *mut randomx_cache,
     dataset: *mut randomx_dataset,
 }
+
+unsafe impl Send for Context {}
+unsafe impl Sync for Context {}
 
 impl Context {
     pub fn new(key: &[u8], fast: bool) -> Self {
@@ -106,9 +157,6 @@ pub struct Hasher {
     _context: Arc<Context>,
     vm: *mut randomx_vm,
 }
-
-unsafe impl Send for Hasher {}
-unsafe impl Sync for Hasher {}
 
 impl Hasher {
     pub fn new(context: Arc<Context>) -> Self {
