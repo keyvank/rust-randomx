@@ -86,6 +86,7 @@ struct Sendable<T>(*mut T);
 unsafe impl<T> Send for Sendable<T> {}
 
 pub struct Context {
+    key: Vec<u8>,
     flags: randomx_flags,
     fast: bool,
     cache: *mut randomx_cache,
@@ -96,6 +97,9 @@ unsafe impl Send for Context {}
 unsafe impl Sync for Context {}
 
 impl Context {
+    pub fn key(&self) -> &[u8] {
+        &self.key
+    }
     pub fn new(key: &[u8], fast: bool) -> Self {
         unsafe {
             let mut flags = randomx_get_flags();
@@ -132,6 +136,7 @@ impl Context {
             }
 
             Self {
+                key: key.to_vec(),
                 flags,
                 fast,
                 cache,
