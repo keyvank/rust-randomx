@@ -180,6 +180,31 @@ impl Hasher {
         }
         Output(hash)
     }
+
+    pub fn hash_first(&mut self, inp: &[u8]) {
+        unsafe {
+            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len() as u64);
+        }
+    }
+    pub fn hash_next(&mut self, next_inp: &[u8]) -> Output {
+        let mut hash = [0u8; RANDOMX_HASH_SIZE as usize];
+        unsafe {
+            randomx_calculate_hash_next(
+                self.vm,
+                next_inp.as_ptr() as *const c_void,
+                next_inp.len() as u64,
+                hash.as_mut_ptr() as *mut c_void,
+            );
+        }
+        Output(hash)
+    }
+    pub fn hash_last(&mut self) -> Output {
+        let mut hash = [0u8; RANDOMX_HASH_SIZE as usize];
+        unsafe {
+            randomx_calculate_hash_last(self.vm, hash.as_mut_ptr() as *mut c_void);
+        }
+        Output(hash)
+    }
 }
 
 impl Drop for Hasher {

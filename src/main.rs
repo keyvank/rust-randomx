@@ -14,13 +14,16 @@ fn main() {
         let diff = Difficulty::new(0x027fffff); // 0x00007fff ff000000 ... 00000000
         threads.push(thread::spawn(move || {
             let mut rng = rand::thread_rng();
-            let hasher = Hasher::new(context);
+            let mut hasher = Hasher::new(context);
+            let mut nonce: u32 = rng.gen();
+            hasher.hash_first(&nonce.to_le_bytes());
             loop {
-                let nonce: u32 = rng.gen();
-                let out = hasher.hash(&nonce.to_le_bytes());
+                let next_nonce: u32 = rng.gen();
+                let out = hasher.hash_next(&next_nonce.to_le_bytes());
                 if out.meets_difficulty(diff) {
                     println!("{} -> {:?}", nonce, out);
                 }
+                nonce = next_nonce;
             }
         }));
     }
