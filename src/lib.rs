@@ -159,7 +159,7 @@ impl Drop for Context {
 }
 
 pub struct Hasher {
-    _context: Arc<Context>,
+    context: Arc<Context>,
     vm: *mut randomx_vm,
 }
 
@@ -170,10 +170,14 @@ impl Hasher {
     pub fn new(context: Arc<Context>) -> Self {
         unsafe {
             Hasher {
-                _context: Arc::clone(&context),
+                context: Arc::clone(&context),
                 vm: randomx_create_vm(context.flags, context.cache, context.dataset),
             }
         }
+    }
+
+    pub fn context(&self) -> &Context {
+        &self.context
     }
 
     pub fn hash(&self, inp: &[u8]) -> Output {
