@@ -17,7 +17,7 @@ fn main() {
             "openbsd" | "bitrig" | "netbsd" | "macos" | "ios" => {
                 "c++"
             }
-            _ => "libc++",
+            _ => "stdc++",
         }
     );
 }

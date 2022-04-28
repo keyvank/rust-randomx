@@ -1,6 +1,6 @@
 [package]
 name = "rust-randomx"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 authors = ["Keyvan Kambakhsh <keyvankambakhsh@gmail.com>"]
 description = "Rust interface to the RandomX hash function"
