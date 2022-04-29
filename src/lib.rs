@@ -14,6 +14,9 @@ use bindings::*;
 pub struct Difficulty(u32);
 
 impl Difficulty {
+    pub fn to_u32(&self) -> u32 {
+        self.0
+    }
     pub fn new(d: u32) -> Self {
         Difficulty(d)
     }
