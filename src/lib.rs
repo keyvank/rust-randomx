@@ -60,7 +60,7 @@ impl AsRef<[u8]> for Output {
 
 impl Output {
     pub fn meets_difficulty(&self, d: Difficulty) -> bool {
-        for (a, b) in self.0.iter().zip(Output::from(d).0.iter()) {
+        for (&a, &b) in self.0.iter().zip(Output::from(d).0.iter()) {
             if a > b {
                 return false;
             }
