@@ -60,12 +60,11 @@ impl AsRef<[u8]> for Output {
 
 impl Output {
     pub fn meets_difficulty(&self, d: Difficulty) -> bool {
-        for (&a, &b) in self.0.iter().zip(Output::from(d).0.iter()) {
-            if a > b {
+        let difficulty = Output::from(d);
+        let byte_pairs = self.0.iter().zip(difficulty.0.iter());
+        for (&a, &b) in byte_pairs {
+            if a & b > 0 { // a = 0x88, b = 0xff
                 return false;
-            }
-            if a < b {
-                return true;
             }
         }
         true
