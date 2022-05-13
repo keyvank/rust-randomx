@@ -26,15 +26,25 @@ impl Difficulty {
     pub fn postfix(&self) -> u32 {
         self.0 & 0x00ffffff
     }
-    pub fn scale(&self, f: f32) -> Self {
-        let mply = (((self.postfix() as u64) << 16) as f32 / f) as u64;
-        let offset = (mply.leading_zeros() as usize) / 8;
-        let new_postfix = &mply.to_be_bytes()[offset..offset + 3];
+    pub fn power(&self) -> u128 {
+        (2f32.powf(self.zeros() as f32 * 8f32) * (0xffffff as f32 / self.postfix() as f32)) as u128
+    }
+    pub fn scale(&self, s: f32) -> Self {
+        let mut zeros_add = s.log2() as i32 / 8;
+        let rem = s / 256f32.powf(zeros_add as f32);
+        let mut new_postfix = self.postfix() as f32 / rem;
+
+        let postfix_power = 0xffffff as f32 / new_postfix;
+        let postfix_power_zeros = postfix_power.log2() as i32 / 8;
+        zeros_add += postfix_power_zeros;
+        new_postfix *= 256f32.powf(postfix_power_zeros as f32);
+        let new_postfix = (new_postfix as u32).to_le_bytes();
+
         Difficulty(u32::from_le_bytes([
-            new_postfix[2],
-            new_postfix[1],
             new_postfix[0],
-            (self.zeros() + offset - 3) as u8,
+            new_postfix[1],
+            new_postfix[2],
+            (self.zeros() as i32 + zeros_add) as u8,
         ]))
     }
 }
@@ -251,5 +261,15 @@ mod tests {
     fn test_fast_hasher() {
         let fast = Hasher::new(Arc::new(Context::new(KEY, true)));
         assert_eq!(fast.hash(INPUT), EXPECTED);
+    }
+
+    #[test]
+    fn test_difficulty_scaling() {
+        let d1 = Difficulty::new(0x011fffff);
+        let d2 = d1.scale(3f32).scale(3f32).scale(3f32);
+        let d3 = d2.scale(1f32 / 3f32).scale(1f32 / 3f32).scale(1f32 / 3f32);
+        assert_eq!(d1.power(), 2048);
+        assert_eq!(d2.power(), 2048 * 27);
+        assert_eq!(d3.power(), 2048);
     }
 }
