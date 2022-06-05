@@ -38,6 +38,11 @@ impl Difficulty {
         let postfix_power_zeros = postfix_power.log2() as i32 / 8;
         zeros_add += postfix_power_zeros;
         new_postfix *= 256f32.powf(postfix_power_zeros as f32);
+
+        if new_postfix as u32 > 0xffffff {
+            return Self::new(0x00ffffff);
+        }
+
         let new_postfix = (new_postfix as u32).to_le_bytes();
 
         Difficulty(u32::from_le_bytes([
