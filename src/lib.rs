@@ -39,7 +39,12 @@ impl Difficulty {
         zeros_add += postfix_power_zeros;
         new_postfix *= 256f32.powf(postfix_power_zeros as f32);
 
-        if new_postfix as u32 > 0xffffff {
+        while new_postfix as u32 > 0xffffff {
+            new_postfix /= 256f32;
+            zeros_add -= 1;
+        }
+
+        if self.zeros() as i32 + zeros_add < 0 {
             return Self::new(0x00ffffff);
         }
 
