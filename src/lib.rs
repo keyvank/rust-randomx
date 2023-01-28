@@ -13,6 +13,31 @@ use bindings::*;
 #[derive(Debug, Clone, Copy)]
 pub struct Difficulty(u32);
 
+fn div_128(a: u128, b: u128) -> f64 {
+    let a_bytes = a.to_be_bytes();
+    let b_bytes = b.to_be_bytes();
+    let mut t_64 = 0u64;
+    let mut r_64 = 0u64;
+    let mut bytes = 0;
+    let mut started = false;
+    for (t, r) in a_bytes.into_iter().zip(b_bytes.into_iter()) {
+        if t > 0 || r > 0 {
+            started = true;
+        }
+        if started {
+            t_64 <<= 8;
+            r_64 <<= 8;
+            t_64 += t as u64;
+            r_64 += r as u64;
+            bytes += 1;
+            if bytes == 8 {
+                break;
+            }
+        }
+    }
+    (t_64 as f64 / r_64 as f64)
+}
+
 impl Difficulty {
     pub fn to_u32(&self) -> u32 {
         self.0
@@ -28,6 +53,18 @@ impl Difficulty {
     }
     pub fn power(&self) -> u128 {
         (2f32.powf(self.zeros() as f32 * 8f32) * (0xffffff as f32 / self.postfix() as f32)) as u128
+    }
+    pub fn from_power(target: u128) -> Self {
+        let mut result = Self::new(0x00ffffff);
+        loop {
+            let mul = target / result.power();
+            if mul > 2 {
+                result = result.scale(2.0);
+            } else {
+                return result.scale(div_128(target, result.power()) as f32);
+            }
+        }
+        result
     }
     pub fn scale(&self, s: f32) -> Self {
         let mut zeros_add = s.log2() as i32 / 8;
