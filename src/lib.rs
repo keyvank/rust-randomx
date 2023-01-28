@@ -35,7 +35,7 @@ fn div_128(a: u128, b: u128) -> f64 {
             }
         }
     }
-    (t_64 as f64 / r_64 as f64)
+    t_64 as f64 / r_64 as f64
 }
 
 impl Difficulty {
@@ -51,8 +51,11 @@ impl Difficulty {
     pub fn postfix(&self) -> u32 {
         self.0 & 0x00ffffff
     }
+    pub fn powerf(&self) -> f64 {
+        2f64.powf(self.zeros() as f64 * 8f64) * (0xffffff as f64 / self.postfix() as f64)
+    }
     pub fn power(&self) -> u128 {
-        (2f32.powf(self.zeros() as f32 * 8f32) * (0xffffff as f32 / self.postfix() as f32)) as u128
+        self.powerf() as u128
     }
     pub fn from_power(target: u128) -> Self {
         let mut result = Self::new(0x00ffffff);
@@ -61,7 +64,8 @@ impl Difficulty {
             if mul > 2 {
                 result = result.scale(2.0);
             } else {
-                return result.scale(div_128(target, result.power()) as f32);
+                result = result.scale(div_128(target, result.power()) as f32);
+                break;
             }
         }
         result
