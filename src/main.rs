@@ -1,4 +1,3 @@
-use num_cpus;
 use rand::prelude::*;
 use rust_randomx::{Context, Difficulty, Hasher};
 use std::sync::Arc;
@@ -7,7 +6,7 @@ use std::thread;
 fn main() {
     let context = Arc::new(Context::new(b"RandomX key", true));
 
-    let num_threads = num_cpus::get();
+    let num_threads = thread::available_parallelism().expect("Failed to determine available parallelism").get();
     let mut threads = Vec::new();
     for _ in 0..num_threads {
         let context = Arc::clone(&context);
