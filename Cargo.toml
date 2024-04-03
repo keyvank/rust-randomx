@@ -12,5 +12,3 @@ license = "MIT"
 cmake = "0.1"
 
 [dependencies]
-num_cpus = "1.0"
-rand = "0.8.5"

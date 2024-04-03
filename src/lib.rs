@@ -2,7 +2,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use num_cpus;
 use std::os::raw::c_void;
 use std::sync::Arc;
 use std::thread;
@@ -173,7 +172,7 @@ impl Context {
             if fast {
                 flags = flags | randomx_flags_RANDOMX_FLAG_FULL_MEM;
                 dataset = randomx_alloc_dataset(flags);
-                let num_threads = num_cpus::get();
+                let num_threads = thread::available_parallelism().expect("Failed to determine available parallelism").get();
                 let length = randomx_dataset_item_count() as usize / num_threads;
                 let mut threads = Vec::new();
                 for i in 0..num_threads {
