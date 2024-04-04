@@ -3,7 +3,6 @@
 #![allow(non_snake_case)]
 
 use std::os::raw::c_void;
-use std::sync::Arc;
 use std::thread;
 
 mod bindings;
@@ -170,7 +169,7 @@ impl Context {
             randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as u64);
             let mut dataset = std::ptr::null_mut();
             if fast {
-                flags = flags | randomx_flags_RANDOMX_FLAG_FULL_MEM;
+                flags |= randomx_flags_RANDOMX_FLAG_FULL_MEM;
                 dataset = randomx_alloc_dataset(flags);
                 let num_threads = thread::available_parallelism().expect("Failed to determine available parallelism").get();
                 let length = randomx_dataset_item_count() as usize / num_threads;
@@ -221,26 +220,26 @@ impl Drop for Context {
     }
 }
 
-pub struct Hasher {
-    context: Arc<Context>,
+pub struct Hasher<'a> {
+    context: &'a Context,
     vm: *mut randomx_vm,
 }
 
-unsafe impl Send for Hasher {}
-unsafe impl Sync for Hasher {}
+unsafe impl<'a> Send for Hasher<'a> {}
+unsafe impl<'a> Sync for Hasher<'a> {}
 
-impl Hasher {
-    pub fn new(context: Arc<Context>) -> Self {
+impl<'a> Hasher<'a> {
+    pub fn new(context: &'a Context) -> Self {
         unsafe {
             Hasher {
-                context: Arc::clone(&context),
+                context,
                 vm: randomx_create_vm(context.flags, context.cache, context.dataset),
             }
         }
     }
 
     pub fn context(&self) -> &Context {
-        &self.context
+        self.context
     }
 
     pub fn hash(&self, inp: &[u8]) -> Output {
@@ -282,7 +281,7 @@ impl Hasher {
     }
 }
 
-impl Drop for Hasher {
+impl<'a> Drop for Hasher<'a> {
     fn drop(&mut self) {
         unsafe {
             randomx_destroy_vm(self.vm);
@@ -303,13 +302,15 @@ mod tests {
 
     #[test]
     fn test_slow_hasher() {
-        let slow = Hasher::new(Arc::new(Context::new(KEY, false)));
+        let context = Context::new(KEY, false);
+        let slow = Hasher::new(&context);
         assert_eq!(slow.hash(INPUT), EXPECTED);
     }
 
     #[test]
     fn test_fast_hasher() {
-        let fast = Hasher::new(Arc::new(Context::new(KEY, true)));
+        let context = Context::new(KEY, true);
+        let fast = Hasher::new(&context);
         assert_eq!(fast.hash(INPUT), EXPECTED);
     }
 
