@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::os::raw::c_void;
+use std::os::raw::{c_ulong, c_void};
 use std::thread;
 
 mod bindings;
@@ -166,7 +166,7 @@ impl Context {
         unsafe {
             let mut flags = randomx_get_flags();
             let mut cache = randomx_alloc_cache(flags);
-            randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as u64);
+            randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as size_t);
             let mut dataset = std::ptr::null_mut();
             if fast {
                 flags |= randomx_flags_RANDOMX_FLAG_FULL_MEM;
@@ -183,8 +183,8 @@ impl Context {
                         randomx_init_dataset(
                             dataset.0,
                             cache.0,
-                            (i * length) as u64,
-                            length as u64,
+                            (i * length) as c_ulong,
+                            length as c_ulong,
                         );
                     }));
                 }
@@ -248,7 +248,7 @@ impl<'a> Hasher<'a> {
             randomx_calculate_hash(
                 self.vm,
                 inp.as_ptr() as *const c_void,
-                inp.len() as u64,
+                inp.len() as size_t,
                 hash.as_mut_ptr() as *mut c_void,
             );
         }
@@ -257,7 +257,7 @@ impl<'a> Hasher<'a> {
 
     pub fn hash_first(&mut self, inp: &[u8]) {
         unsafe {
-            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len() as u64);
+            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len() as size_t);
         }
     }
     pub fn hash_next(&mut self, next_inp: &[u8]) -> Output {
@@ -266,7 +266,7 @@ impl<'a> Hasher<'a> {
             randomx_calculate_hash_next(
                 self.vm,
                 next_inp.as_ptr() as *const c_void,
-                next_inp.len() as u64,
+                next_inp.len() as size_t,
                 hash.as_mut_ptr() as *mut c_void,
             );
         }
