@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread;
 
 mod bindings;
-use bindings::*;
+pub use bindings::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Difficulty(u32);
@@ -167,7 +167,7 @@ impl Context {
         unsafe {
             let mut flags = randomx_get_flags();
             let mut cache = randomx_alloc_cache(flags);
-            randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as size_t);
+            randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len());
             let mut dataset = std::ptr::null_mut();
             if fast {
                 flags |= randomx_flags_RANDOMX_FLAG_FULL_MEM;
@@ -258,7 +258,7 @@ impl Hasher {
             randomx_calculate_hash(
                 self.vm,
                 inp.as_ptr() as *const c_void,
-                inp.len() as size_t,
+                inp.len(),
                 hash.as_mut_ptr() as *mut c_void,
             );
         }
@@ -267,7 +267,7 @@ impl Hasher {
 
     pub fn hash_first(&mut self, inp: &[u8]) {
         unsafe {
-            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len() as size_t);
+            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len());
         }
     }
     pub fn hash_next(&mut self, next_inp: &[u8]) -> Output {
@@ -276,7 +276,7 @@ impl Hasher {
             randomx_calculate_hash_next(
                 self.vm,
                 next_inp.as_ptr() as *const c_void,
-                next_inp.len() as size_t,
+                next_inp.len(),
                 hash.as_mut_ptr() as *mut c_void,
             );
         }
