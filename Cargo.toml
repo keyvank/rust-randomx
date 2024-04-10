@@ -7,6 +7,7 @@ description = "Rust interface to the RandomX hash function"
 repository = "https://github.com/zeeka-network/rust-randomx"
 homepage = "https://github.com/zeeka-network/rust-randomx"
 license = "MIT"
+keywords = ["RandomX", "PoW"]
 
 [build-dependencies]
 cmake = "0.1"
