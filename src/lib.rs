@@ -170,7 +170,7 @@ impl Context {
             randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as size_t);
             let mut dataset = std::ptr::null_mut();
             if fast {
-                flags = flags | randomx_flags_RANDOMX_FLAG_FULL_MEM;
+                flags |= randomx_flags_RANDOMX_FLAG_FULL_MEM;
                 dataset = randomx_alloc_dataset(flags);
                 let num_threads = thread::available_parallelism().expect("Failed to determine available parallelism").get();
                 let length = randomx_dataset_item_count() as usize / num_threads;
@@ -238,7 +238,16 @@ impl Hasher {
             }
         }
     }
-
+    pub fn update(&mut self, context: Arc<Context>) {
+        unsafe {
+            if context.fast {
+                randomx_vm_set_dataset(self.vm, context.dataset);
+            } else {
+                randomx_vm_set_cache(self.vm, context.cache);
+            }
+        }
+        self.context = context;
+    }
     pub fn context(&self) -> &Context {
         &self.context
     }
