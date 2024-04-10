@@ -2,12 +2,12 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::os::raw::c_void;
+use std::os::raw::{c_ulong, c_void};
 use std::sync::Arc;
 use std::thread;
 
 mod bindings;
-use bindings::*;
+pub use bindings::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Difficulty(u32);
@@ -167,10 +167,10 @@ impl Context {
         unsafe {
             let mut flags = randomx_get_flags();
             let mut cache = randomx_alloc_cache(flags);
-            randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len() as u64);
+            randomx_init_cache(cache, key.as_ptr() as *const c_void, key.len());
             let mut dataset = std::ptr::null_mut();
             if fast {
-                flags = flags | randomx_flags_RANDOMX_FLAG_FULL_MEM;
+                flags |= randomx_flags_RANDOMX_FLAG_FULL_MEM;
                 dataset = randomx_alloc_dataset(flags);
                 let num_threads = thread::available_parallelism().expect("Failed to determine available parallelism").get();
                 let length = randomx_dataset_item_count() as usize / num_threads;
@@ -184,8 +184,8 @@ impl Context {
                         randomx_init_dataset(
                             dataset.0,
                             cache.0,
-                            (i * length) as u64,
-                            length as u64,
+                            (i * length) as c_ulong,
+                            length as c_ulong,
                         );
                     }));
                 }
@@ -238,7 +238,16 @@ impl Hasher {
             }
         }
     }
-
+    pub fn update(&mut self, context: Arc<Context>) {
+        unsafe {
+            if context.fast {
+                randomx_vm_set_dataset(self.vm, context.dataset);
+            } else {
+                randomx_vm_set_cache(self.vm, context.cache);
+            }
+        }
+        self.context = context;
+    }
     pub fn context(&self) -> &Context {
         &self.context
     }
@@ -249,7 +258,7 @@ impl Hasher {
             randomx_calculate_hash(
                 self.vm,
                 inp.as_ptr() as *const c_void,
-                inp.len() as u64,
+                inp.len(),
                 hash.as_mut_ptr() as *mut c_void,
             );
         }
@@ -258,7 +267,7 @@ impl Hasher {
 
     pub fn hash_first(&mut self, inp: &[u8]) {
         unsafe {
-            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len() as u64);
+            randomx_calculate_hash_first(self.vm, inp.as_ptr() as *const c_void, inp.len());
         }
     }
     pub fn hash_next(&mut self, next_inp: &[u8]) -> Output {
@@ -267,7 +276,7 @@ impl Hasher {
             randomx_calculate_hash_next(
                 self.vm,
                 next_inp.as_ptr() as *const c_void,
-                next_inp.len() as u64,
+                next_inp.len(),
                 hash.as_mut_ptr() as *mut c_void,
             );
         }
