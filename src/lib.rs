@@ -6,8 +6,9 @@ use std::os::raw::{c_ulong, c_void};
 use std::sync::Arc;
 use std::thread;
 
+#[allow(dead_code)]
 mod bindings;
-pub use bindings::*;
+use bindings::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Difficulty(u32);
