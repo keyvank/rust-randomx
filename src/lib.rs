@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::thread;
 
 mod bindings;
-pub use bindings::*;
+use bindings::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Difficulty(u32);
