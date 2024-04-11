@@ -8,7 +8,7 @@ use std::thread;
 
 #[allow(dead_code)]
 mod bindings;
-use bindings::*;
+pub use bindings::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Difficulty(u32);
